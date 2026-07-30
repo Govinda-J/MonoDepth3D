@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>DepthCloud — Indoor Scene Reconstruction</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Syne:wght@400;600;800&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="css/style.css">
+</head>
+<body>
+<div class="app">
+
+  <!-- Header -->
+  <header>
+    <div class="logo-block">
+      <div class="logo-icon">
+        <svg viewBox="0 0 22 22" fill="none" stroke="#00e5ff" stroke-width="1.5">
+          <circle cx="11" cy="11" r="2.5"/>
+          <circle cx="4" cy="6" r="1.5"/><circle cx="18" cy="4" r="1.5"/>
+          <circle cx="17" cy="16" r="1.5"/><circle cx="5" cy="17" r="1.5"/>
+          <line x1="11" y1="11" x2="4" y2="6"/><line x1="11" y1="11" x2="18" y2="4"/>
+          <line x1="11" y1="11" x2="17" y2="16"/><line x1="11" y1="11" x2="5" y2="17"/>
+        </svg>
+      </div>
+      <div>
+        <div class="logo-text">MONO<span>DEPTH</span>3D</div>
+        <div class="logo-sub">Indoor Scene Reconstruction · PVCNN Stage II</div>
+      </div>
+    </div>
+    <div class="header-right">
+      <div class="api-url-wrap">
+        <span class="api-label">API</span>
+        <input id="apiUrlInput" class="api-input" type="text" placeholder="https://xxxx.ngrok-free.app" spellcheck="false">
+      </div>
+      <div class="status-pill" id="statusPill">
+        <span class="pulse" id="pulseEl"></span>
+        <span id="statusText">Not connected</span>
+      </div>
+    </div>
+  </header>
+
+  <!-- Pipeline stages -->
+  <div class="stage-strip">
+    <div class="stage active" id="st1"><span class="stage-num">01</span>Image Upload</div>
+    <span class="stage-arrow">›</span>
+    <div class="stage" id="st2"><span class="stage-num">02</span>Depth Estimation</div>
+    <span class="stage-arrow">›</span>
+    <div class="stage" id="st3"><span class="stage-num">03</span>Cloud Generation</div>
+    <span class="stage-arrow">›</span>
+    <div class="stage" id="st4"><span class="stage-num">04</span>PVCNN Refinement</div>
+    <span class="stage-arrow">›</span>
+    <div class="stage" id="st5"><span class="stage-num">05</span>Visualization</div>
+  </div>
+
+  <!-- Upload -->
+  <div class="section">
+    <div class="section-label">01 — Input Image</div>
+    <div class="upload-zone" id="dropzone">
+      <input type="file" id="fileInput" accept="image/*">
+      <div class="upload-icon">⬡</div>
+      <div class="upload-title">Drop image here or browse</div>
+      <div class="upload-hint">Supports JPG, PNG, WEBP · Indoor scenes recommended</div>
+    </div>
+    <div class="img-preview-wrap" id="previewWrap">
+      <div class="img-preview-box">
+        <img id="previewImg" src="" alt="preview">
+        <div class="img-overlay" id="imgDims">—</div>
+      </div>
+      <div class="img-meta" id="imgMeta"></div>
+    </div>
+  </div>
+
+  <!-- Config -->
+  <div class="section">
+    <div class="section-label">02 — Pipeline Config</div>
+    <div class="config-grid">
+      <div class="config-item">
+        <div class="config-label">Depth Model</div>
+        <select class="config-input" id="depthModel">
+          <option value="dpt-large">DPT-Large (ViT-L)</option>
+          <option value="dpt-hybrid">DPT-Hybrid (ViT-H)</option>
+          <option value="midas-small">MiDaS Small (fast)</option>
+        </select>
+      </div>
+      <div class="config-item">
+        <div class="config-label">Point Budget (N)</div>
+        <input class="config-input" type="number" id="npoints" value="8192" min="512" max="16384" step="512">
+      </div>
+      <div class="config-item">
+        <div class="config-label">Offset Clamp (±)</div>
+        <input class="config-input" type="number" id="clamp" value="0.5" min="0.1" max="2.0" step="0.05">
+      </div>
+    </div>
+  </div>
+
+  <!-- Run -->
+  <div class="run-row">
+    <button class="btn-run" id="runBtn" disabled>▶ Run Inference</button>
+    <button class="btn-clear" id="clearBtn">✕ Reset</button>
+    <div id="runStatus"></div>
+  </div>
+
+  <!-- Log -->
+  <div class="log-box" id="logBox"></div>
+
+  <!-- Depth Map -->
+  <div class="section" id="depthSection" style="display:none;">
+    <div class="section-label">03 — Depth Map  <span style="color:var(--accent);font-size:10px;letter-spacing:1px;">(MiDaS DPT-Large · plasma colormap)</span></div>
+    <div class="depth-row">
+      <div class="depth-panel">
+        <div class="depth-panel-header">
+          <span>RGB Input</span>
+          <span class="viewer-badge badge-raw" style="font-size:9px;">Original</span>
+        </div>
+        <img id="depthRgbThumb" class="depth-thumb" src="" alt="rgb">
+      </div>
+      <div class="depth-panel">
+        <div class="depth-panel-header">
+          <span>Predicted Depth</span>
+          <span class="viewer-badge badge-refined" style="font-size:9px;">Stage-I</span>
+        </div>
+        <canvas id="depthCanvas" class="depth-thumb"></canvas>
+      </div>
+      <div class="depth-stats">
+        <div class="depth-stat-row">
+          <span class="depth-stat-label">Min depth</span>
+          <span class="depth-stat-val" id="dStatMin">—</span>
+        </div>
+        <div class="depth-stat-row">
+          <span class="depth-stat-label">Max depth</span>
+          <span class="depth-stat-val" id="dStatMax">—</span>
+        </div>
+        <div class="depth-stat-row">
+          <span class="depth-stat-label">Mean depth</span>
+          <span class="depth-stat-val" id="dStatMean">—</span>
+        </div>
+        <div class="depth-stat-row">
+          <span class="depth-stat-label">Dynamic range</span>
+          <span class="depth-stat-val" id="dStatRange">—</span>
+        </div>
+        <div class="depth-stat-row">
+          <span class="depth-stat-label">Depth model</span>
+          <span class="depth-stat-val" id="dStatModel">—</span>
+        </div>
+        <div class="depth-stat-row">
+          <span class="depth-stat-label">Resolution</span>
+          <span class="depth-stat-val" id="dStatRes">—</span>
+        </div>
+        <div class="depth-colorbar">
+          <div class="colorbar-gradient"></div>
+          <div class="colorbar-labels">
+            <span>Near</span><span>Far</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Metrics -->
+  <div class="section" id="metricsSection" style="display:none;">
+    <div class="section-label">04 — Results</div>
+    <div class="metrics-row">
+
+      <div class="metric-card blue">
+        <div class="metric-label">Depth Correction</div>
+        <div class="metric-val" id="mDeltaD">—</div>
+        <div class="metric-sub">Δd  (shift applied)</div>
+        <div class="metric-bar-track"><div class="metric-bar-fill" id="mDeltaDBar"></div></div>
+      </div>
+
+      <div class="metric-card orange">
+        <div class="metric-label">Focal Correction</div>
+        <div class="metric-val" id="mAlphaF">—</div>
+        <div class="metric-sub">αf  (focal scale)</div>
+        <div class="metric-bar-track"><div class="metric-bar-fill" id="mAlphaFBar" style="background:var(--accent2)"></div></div>
+      </div>
+
+      <div class="metric-card green">
+        <div class="metric-label">CD Improvement</div>
+        <div class="metric-val" id="mImprove">—</div>
+        <div class="metric-sub">vs raw cloud (est.)</div>
+        <div class="metric-bar-track"><div class="metric-bar-fill" id="mImproveBar" style="background:var(--success)"></div></div>
+      </div>
+
+      <div class="metric-card purple">
+        <div class="metric-label">Points</div>
+        <div class="metric-val" id="mPoints">—</div>
+        <div class="metric-sub">Per cloud · <span id="mElapsed" style="color:var(--accent3)">—</span></div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- 3D Viewers -->
+  <div class="section" id="viewerSection">
+    <div class="section-label">05 — Point Cloud Viewer</div>
+    <div class="viewer-toolbar">
+      <div style="display:flex;align-items:center;gap:10px;">
+        <span class="toolbar-label">Point size</span>
+        <input type="range" min="0.002" max="0.025" step="0.001" value="0.005" id="ptSizeSlider">
+        <span id="ptSizeVal" class="toolbar-label">0.005</span>
+      </div>
+      <span class="toolbar-hint">Left-drag rotate · Scroll zoom · Right-drag pan</span>
+    </div>
+
+    <div class="viewers-grid">
+      <!-- Raw -->
+      <div class="viewer-panel">
+        <div class="viewer-header">
+          <div class="viewer-title">Raw Generated</div>
+          <div class="viewer-badge badge-raw">Stage-I Output</div>
+        </div>
+        <div style="position:relative;">
+          <canvas class="viewer-canvas" id="canvasRaw"></canvas>
+          <div class="analyzing-overlay" id="overlayRaw">
+            <div class="spinner"></div>
+            <div class="analyzing-text" id="overlayRawText">Generating cloud...</div>
+          </div>
+          <div class="no-data-placeholder" id="placeholderRaw">
+            <svg width="48" height="48" viewBox="0 0 48 48" fill="none" stroke="#6b7a8a" stroke-width="1.5">
+              <circle cx="24" cy="24" r="3"/><circle cx="10" cy="14" r="2"/><circle cx="38" cy="10" r="2"/>
+              <circle cx="36" cy="34" r="2"/><circle cx="12" cy="36" r="2"/>
+              <line x1="24" y1="24" x2="10" y2="14"/><line x1="24" y1="24" x2="38" y2="10"/>
+              <line x1="24" y1="24" x2="36" y2="34"/><line x1="24" y1="24" x2="12" y2="36"/>
+            </svg>
+            <p>Run inference to see cloud</p>
+          </div>
+        </div>
+        <div class="viewer-controls">
+          <button class="ctrl-btn active" onclick="setMode('raw','points',this)">Points</button>
+          <button class="ctrl-btn" onclick="setMode('raw','wireframe',this)">Larger pts</button>
+          <button class="ctrl-btn" onclick="resetCam('raw')">Reset cam</button>
+          <button class="ctrl-btn export-btn" onclick="exportCloud('raw')">↓ XYZ</button>
+        </div>
+      </div>
+
+      <!-- Refined -->
+      <div class="viewer-panel">
+        <div class="viewer-header">
+          <div class="viewer-title">PVCNN Refined</div>
+          <div class="viewer-badge badge-refined">Stage-II Output</div>
+        </div>
+        <div style="position:relative;">
+          <canvas class="viewer-canvas" id="canvasRefined"></canvas>
+          <div class="analyzing-overlay" id="overlayRefined">
+            <div class="spinner"></div>
+            <div class="analyzing-text" id="overlayRefinedText">PVCNN refining...</div>
+          </div>
+          <div class="no-data-placeholder" id="placeholderRefined">
+            <svg width="48" height="48" viewBox="0 0 48 48" fill="none" stroke="#6b7a8a" stroke-width="1.5">
+              <circle cx="24" cy="24" r="3"/><circle cx="10" cy="14" r="2"/><circle cx="38" cy="10" r="2"/>
+              <circle cx="36" cy="34" r="2"/><circle cx="12" cy="36" r="2"/>
+              <line x1="24" y1="24" x2="10" y2="14"/><line x1="24" y1="24" x2="38" y2="10"/>
+              <line x1="24" y1="24" x2="36" y2="34"/><line x1="24" y1="24" x2="12" y2="36"/>
+            </svg>
+            <p>Awaiting refinement</p>
+          </div>
+        </div>
+        <div class="viewer-controls">
+          <button class="ctrl-btn active" onclick="setMode('refined','points',this)">Points</button>
+          <button class="ctrl-btn" onclick="setMode('refined','wireframe',this)">Larger pts</button>
+          <button class="ctrl-btn" onclick="resetCam('refined')">Reset cam</button>
+          <button class="ctrl-btn export-btn" onclick="exportCloud('refined')">↓ XYZ</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+</div><!-- /.app -->
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script src="js/viewer.js"></script>
+<script src="js/app_v2.js"></script>
+</body>
+</html>

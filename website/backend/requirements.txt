@@ -1,0 +1,29 @@
+# website/backend/requirements.txt
+#
+# Only what server.py actually needs at runtime. Deliberately does NOT
+# include pyvista/matplotlib — those are for the local-only scripts
+# (infer5.py, visualize.py) which open an interactive GUI window and are
+# never meant to run inside a headless server container.
+
+# ── web framework ──────────────────────────────────────────────────────────
+fastapi==0.115.0
+uvicorn[standard]==0.30.6
+python-multipart==0.0.9   # required by FastAPI to parse the uploaded image (File(...))
+
+# ── ML / inference ─────────────────────────────────────────────────────────
+# NOTE: this pulls the default PyPI torch build, which is CPU-only on most
+# platforms. If you deploy to a GPU-enabled Space/host, replace this with the
+# CUDA-specific install command from https://pytorch.org/get-started/locally/
+# (it looks like: pip install torch --index-url https://download.pytorch.org/whl/cu121)
+torch==2.4.1
+torchvision==0.19.1
+timm==1.0.9        # required by torch.hub's MiDaS DPT_Large model internals
+einops==0.8.0      # required by some MiDaS/DPT backbone code paths
+
+# ── image processing ───────────────────────────────────────────────────────
+opencv-python-headless==4.10.0.84   # "headless" = no GUI bindings, correct choice for servers
+numpy==1.26.4
+Pillow==10.4.0
+
+# ── model weight download ──────────────────────────────────────────────────
+huggingface_hub==0.24.6   # only needed if you fetch best_checkpoint.pth from a HF model repo at startup

@@ -1,0 +1,12 @@
+*:Zone.Identifier
+__pycache__/
+*.pyc
+*.pth
+checkpoints/
+node_modules/
+datasets/
+utils/
+.env
+*.log
+outputs/
+.DS_Store

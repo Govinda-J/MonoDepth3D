@@ -1,0 +1,13 @@
+# netlify.toml
+# Drop the /frontend folder here, or point Netlify to it.
+
+[build]
+  publish = "."       # root of the frontend folder
+  command = ""        # no build step — pure static
+
+[[headers]]
+  for = "/*"
+  [headers.values]
+    X-Frame-Options = "DENY"
+    X-Content-Type-Options = "nosniff"
+    Referrer-Policy = "strict-origin-when-cross-origin"
