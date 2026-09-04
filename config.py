@@ -1,9 +1,11 @@
+# config.py
+# Central configuration: project paths (env-var overridable for Docker) and
+# training/dataset hyperparameters. Only train.py and scannet_dataset.py
+# import from here — server.py/infer5.py currently hardcode their own copies.
 import os
 from pathlib import Path
 
-
-# ── Project paths ─────────────────────────────────────────────────────────────
-
+# ── PROJECT PATHS ─────────────────────────────────────────────────────────────
 PROJECT_ROOT = Path(
     os.environ.get("MONODEPTH3D_ROOT",
         Path(__file__).resolve().parent
@@ -27,6 +29,16 @@ OUTPUT_DIR = Path(
     )
 )
 
+# ---- MiDaS cache dir ----
+MIDAS_DIR = os.path.expanduser(
+    "~/.cache/torch/hub/intel-isl_MiDaS_master"
+)
+
+# ── PROJECT CONSTANTS ─────────────────────────────────────────────────────────────
+INIT_FOV_DEG = 60.0
+PCM_POINTS = 8192
+VOXEL_RES = 32
+
 # ── ScanNet metric intrinsics ────────────
 config = {
     "fx": 577.590698, "fy": 578.729797,
@@ -36,10 +48,10 @@ config = {
     "image_w": 640,
     "image_h": 480,
 
-    # ── Paper §2.1: initial FOV guess used at inference → must match training ─
+    # ── Initial FOV guess used at inference → must match training ─
     "init_fov_deg": 60.0,
 
-    # ── PCM training hyper-params ─────────────────────────────────────────────
+    # ── PCM training hyperparameters ─────────────────────────────────────────────
     "num_points":       8192,
     "delta_d_range":    (-0.25, 0.8),
     "alpha_f_range":    (0.5, 1.5),
@@ -62,7 +74,7 @@ config = {
         "SCANNET_TEST_SPLIT",
         r"C:\scannet_data\test_split.json"
     ),
- # ── Output path ───────────────────────────────────────────────────────────
+ # ── Checkpoint Output path ───────────────────────────────────────────────────────────
     # Can be overridden with PCM_OUTPUT_DIR.
     "cloud_save_dir": str(OUTPUT_DIR),
 }

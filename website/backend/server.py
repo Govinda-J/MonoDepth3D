@@ -1,45 +1,33 @@
-"""
-server.py  —  DepthCloud FastAPI backend  (v2 — sends depth map to frontend)
-Place at:  website/backend/server.py
+# server.py
+# FastAPI backend: exposes POST /infer, which runs MiDaS depth estimation
+# followed by PCM (ShiftPVCNN/FocalPVCNN) correction on an uploaded image.
+#
+# Run:
+#   cd website/backend
+#   uvicorn server:app --host 0.0.0.0 --port 8000 --reload
 
-Run locally:
-  cd website/backend
-  uvicorn server:app --reload --port 8000
 
-Run in Docker (see website/backend/Dockerfile):
-  uvicorn website.backend.server:app --host 0.0.0.0 --port 7860
-"""
-
-import io, os, sys, time
+import os, sys, time
 import cv2
 import numpy as np
 import torch
 from fastapi import FastAPI, File, UploadFile, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
+from pcm_utils import shift_combined, shift_near_camera_edges
 
 from huggingface_hub import hf_hub_download
+from models.pvcnn import ShiftPVCNN, FocalPVCNN
 from config import PROJECT_ROOT, CHECKPOINT, PVCNN_MODEL_REPO
 
-# ── project root ───
+# ── PROJECT ROOT ───
 sys.path.insert(0, str(PROJECT_ROOT))
 
-from models.pvcnn import ShiftPVCNN, FocalPVCNN
+INIT_FOV_DEG = 60.0
+PCM_POINTS   = 8192
+VOXEL_RES    = 32
 
-# ── checkpoint path — overridable via env var ──────────────────────────────
-# Matches the same PCM_CHECKPOINT variable used by infer5.py / visualize.py,
-# so all three entry points agree on where the weights live without needing
-# three different env vars. Falls back to the repo-relative default if unset.
 local_checkpoint = CHECKPOINT
-
-INIT_FOV_DEG = float(os.environ.get("PCM_INIT_FOV_DEG", 60.0))
-PCM_POINTS   = int(os.environ.get("PCM_NUM_POINTS", 8192))
-VOXEL_RES    = int(os.environ.get("PCM_VOXEL_RES", 32))
-
-# ── MiDaS cache dir — derived from torch's own hub directory instead of a
-# hand-typed "~/.cache/torch/hub/..." guess. torch.hub.get_dir() already
-# respects the TORCH_HOME env var (set in the Dockerfile), so this line
-# stays correct even if that env var changes later. ─────────────────────────
 MIDAS_DIR = os.path.join(torch.hub.get_dir(), "intel-isl_MiDaS_master")
 
 app = FastAPI(title="DepthCloud API")
@@ -116,32 +104,10 @@ def predict_depth(img_bgr):
     d_hires = cv2.resize(d, (640, 640), interpolation=cv2.INTER_LINEAR)
     return d.astype(np.float32), d_hires.astype(np.float32)
 
-
-def shift_combined(depth, delta_d, steepness=8.0, midpoint=0.4,
-                   edge_sensitivity=0.02, depth_weight=0.6, plane_weight=0.4):
-    d_corr = depth.copy(); mask = d_corr > 0
-    w_depth = np.ones_like(depth)
-    w_depth[mask] = 1.0 / (1.0 + np.exp(steepness * (depth[mask] - midpoint)))
-    gx = cv2.Sobel(depth, cv2.CV_32F, 1, 0, ksize=3)
-    gy = cv2.Sobel(depth, cv2.CV_32F, 0, 1, ksize=3)
-    gm = np.sqrt(gx**2 + gy**2)
-    gm = (gm - gm.min()) / (gm.max() - gm.min() + 1e-8)
-    w_plane = np.exp(-gm / edge_sensitivity)
-    w = depth_weight * w_depth + plane_weight * w_plane
-    w[mask] /= (w[mask].mean() + 1e-8)
-    d_corr[mask] -= delta_d * w[mask]
-    return np.clip(d_corr, 0.0, 1.0)
-
-
-def shift_near_camera_edges(depth, delta_d, edge_strength=1.5, depth_threshold=0.35):
-    d_corr = depth.copy(); H, W = depth.shape; mask = d_corr > 0
-    xs = np.arange(W, dtype=np.float32); ys = np.arange(H, dtype=np.float32)
-    XX, YY = np.meshgrid(xs, ys)
-    radial  = np.sqrt(((XX-W/2)/(W/2))**2 + ((YY-H/2)/(H/2))**2) / np.sqrt(2.0)
-    depth_w = 1.0 / (1.0 + np.exp(20.0 * (depth - depth_threshold)))
-    d_corr[mask] += abs(delta_d) * (radial * depth_w * edge_strength)[mask]
-    return np.clip(d_corr, 0.0, 1.0)
-
+# ----- Imported from pcm_utils.py -----
+# shift_combined(depth, delta_d, steepness=8.0, midpoint=0.4,
+#                   edge_sensitivity=0.02, depth_weight=0.6, plane_weight=0.4)
+# shift_near_camera_edges(depth, delta_d, edge_strength=1.5, depth_threshold=0.35)
 
 def depth_to_pc_sampled(depth_np, fx, fy, cx, cy, n=PCM_POINTS):
     H, W = depth_np.shape; valid = depth_np > 0

@@ -1,4 +1,6 @@
-# train.py  —  Stage 2 PCM training (GPU-optimised for Windows)
+# train.py
+# Stage-2 PCM training script: trains ShiftPVCNN and FocalPVCNN jointly on
+# ScanNet depth maps. Not needed for inference/deployment — training only.
 
 import os, sys, time, json
 import torch
@@ -12,7 +14,7 @@ from config import config
 from models.pvcnn import ShiftPVCNN, FocalPVCNN
 from datasets.scannet_dataset import DepthDataset, collate_skip_none
 
-# ── hyper-params ──────────────────────────────────────────────────────────────
+# ── HYPERPARAMETERS  ──────────────────────────────────────────────────────────────
 BATCH_SIZE  = config["batch_size"]
 ACCUM_STEPS = 4
 EPOCHS      = config["epochs"]
@@ -26,7 +28,7 @@ def _unwrap(m):
 def main():
     os.makedirs(CKPT_DIR, exist_ok=True)
 
-    # ── GPU setup ─────────────────────────────────────────────────────────────
+    # ---- GPU SETUP ----
     cudnn.benchmark     = True
     cudnn.deterministic = False
 
@@ -40,7 +42,7 @@ def main():
         print(f"GPU    : {torch.cuda.get_device_name(0)}")
         print(f"VRAM   : {torch.cuda.get_device_properties(0).total_memory / 1e9:.1f} GB")
 
-    # ── datasets ──────────────────────────────────────────────────────────────
+    # ── DATASETS ──────────────────────────────────────────────────────────────
     with open(config["train_split"]) as fh:
         train_paths = json.load(fh)
     with open(config["test_split"]) as fh:
@@ -73,7 +75,7 @@ def main():
         collate_fn=collate_skip_none
     )
 
-    # ── models ────────────────────────────────────────────────────────────────
+    # ── MODELS ────────────────────────────────────────────────────────────────
     shift_net = ShiftPVCNN(VOXEL_RES).to(device)
     focal_net = FocalPVCNN(VOXEL_RES).to(device)
 
@@ -84,7 +86,7 @@ def main():
     else:
         print("Skipping torch.compile (not supported on Windows/no Triton)")
 
-    # ── optimisers ────────────────────────────────────────────────────────────
+    # ── OPTIMIZERS & SCHEDULERS ────────────────────────────────────────────────────────────
     opt_shift = torch.optim.AdamW(shift_net.parameters(), lr=LR, weight_decay=1e-4)
     opt_focal = torch.optim.AdamW(focal_net.parameters(), lr=LR, weight_decay=1e-4)
 
@@ -97,7 +99,7 @@ def main():
     scaler_focal = torch.amp.GradScaler("cuda")
     criterion    = nn.L1Loss()
 
-    # ── checkpoint helpers ────────────────────────────────────────────────────
+    # ── CHECKPOINT HELPERS ────────────────────────────────────────────────────
     LATEST = os.path.join(CKPT_DIR, "latest_checkpoint.pth")
     BEST   = os.path.join(CKPT_DIR, "best_checkpoint.pth")
 
@@ -123,13 +125,13 @@ def main():
         if "sched_focal" in ckpt: sched_focal.load_state_dict(ckpt["sched_focal"])
         return ckpt.get("epoch", 0), ckpt.get("best_val", float("inf"))
 
-    # ── resume ────────────────────────────────────────────────────────────────
+    # ── RESUME FROM CHECKPOINT ────────────────────────────────────────────────────────────────
     start_epoch, best_val = 0, float("inf")
     if os.path.exists(LATEST):
         start_epoch, best_val = load_ckpt(LATEST)
         print(f"Resumed from epoch {start_epoch},  best_val={best_val:.4f}")
 
-    # ── training loop ─────────────────────────────────────────────────────────
+    # ── TRAINING LOOP ─────────────────────────────────────────────────────────
     n_steps = len(train_loader)
 
     for epoch in range(start_epoch, EPOCHS):
@@ -172,7 +174,7 @@ def main():
 
         train_s /= n_steps; train_f /= n_steps
 
-        # ── validation ────────────────────────────────────────────────────────
+        # ── VALIDATION ────────────────────────────────────────────────────────
         shift_net.eval(); focal_net.eval()
         val_s = val_f = 0.0
         nv = 0
@@ -207,7 +209,7 @@ def main():
               f"lr={opt_shift.param_groups[0]['lr']:.2e}  "
               f"{time.time()-t0:.1f}s")
 
-        # fix: update best_val BEFORE saving latest so resume gets correct value
+        # best_val updated before saving latest so resume reads correct value
         if val_total < best_val:
             best_val = val_total
             save_ckpt(BEST, epoch + 1, best_val)

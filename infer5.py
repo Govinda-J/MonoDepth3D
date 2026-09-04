@@ -8,7 +8,10 @@ import numpy as np
 import torch
 import cv2
 import pyvista as pv
+
+from pcm_utils import shift_combined, shift_near_camera_edges
 from config import PROJECT_ROOT, CHECKPOINT, OUTPUT_DIR
+                    
 
 # ── paths ─────────────────────────────────────────────────────────────────────
 PVCNN_ROOT   = PROJECT_ROOT
@@ -85,96 +88,6 @@ def predict_depth(img_bgr, model, transform, device):
     # Step 4: resize to 640x640 for PCM input (Upsampling)
     d_hires = cv2.resize(d, (640, 640), interpolation=cv2.INTER_LINEAR)
     return d.astype(np.float32), d_hires.astype(np.float32)
-
-# =========================================================================================
-
-
-# ── Depth Correction Functions ─────────────────────────────────────────────────
-def shift_combined(depth, delta_d,
-                   steepness=8.0, midpoint=0.4,
-                   edge_sensitivity=0.02,
-                   depth_weight=0.6, plane_weight=0.4):
-    """
-    Combines sigmoid depth weighting with planarity weighting.
-    depth_weight + plane_weight = 1.0 (controls blend)
-    """
-    d_corr = depth.copy()
-    mask   = d_corr > 0
-
-    # Component 1: sigmoid depth weight
-    w_depth        = np.ones_like(depth)
-    w_depth[mask]  = 1.0 / (1.0 + np.exp(steepness * (depth[mask] - midpoint)))
-
-    # Component 2: planarity weight (inverse gradient)
-    grad_x   = cv2.Sobel(depth, cv2.CV_32F, 1, 0, ksize=3)
-    grad_y   = cv2.Sobel(depth, cv2.CV_32F, 0, 1, ksize=3)
-    grad_mag = np.sqrt(grad_x**2 + grad_y**2)
-    grad_mag = (grad_mag - grad_mag.min()) / (grad_mag.max() - grad_mag.min() + 1e-8)
-    w_plane  = np.exp(-grad_mag / edge_sensitivity)
-
-    # Combine 1 & 2 
-    weight        = depth_weight * w_depth + plane_weight * w_plane
-    weight[mask] /= (weight[mask].mean() + 1e-8)
-
-    d_corr[mask] -= delta_d * weight[mask]
-    d_corr = np.clip(d_corr, 0.0, 1.0)
-    return d_corr
-
-def shift_near_camera_edges(depth, delta_d,
-                             edge_strength=2.0,
-                             depth_threshold=0.4):
-    """
-    Corrects near-camera surface bending at image edges.
-    """
-    d_corr = depth.copy()
-    H, W   = depth.shape
-    mask   = d_corr > 0
-
-    # ── Radial weight: 0 at image center, 1 at corners ───────────────────────
-    cy_n, cx_n = H / 2.0, W / 2.0
-    ys = np.arange(H, dtype=np.float32)
-    xs = np.arange(W, dtype=np.float32)
-    XX, YY = np.meshgrid(xs, ys)
-    rad_x  = ((XX - cx_n) / cx_n) ** 2
-    rad_y  = ((YY - cy_n) / cy_n) ** 2
-    radial = np.sqrt(rad_x + rad_y) / np.sqrt(2.0)  # [0,1]
-
-    # ── Depth weight: smooth sigmoid falloff at threshold ─────────────────────
-    # 1.0 for very shallow depths, smoothly → 0.0 beyond threshold
-    # No hard cutoff — smooth transition prevents seams
-    sharpness  = 20.0   # controls how sharp the sigmoid is at threshold
-    depth_w    = 1.0 / (1.0 + np.exp(sharpness * (depth - depth_threshold)))
-
-    # ── Combined weight ───────────────────────────────────────────────────────
-    weight = radial * depth_w * edge_strength
-
-    # ── Always push near-camera edge points slightly away from camera ───
-    # This counteracts the inward bending regardless of delta_d sign
-    # We use abs(delta_d) as the correction magnitude — always positive direction
-    correction_magnitude = abs(delta_d)
-
-    # Near-camera edge points should be pushed to match depth of their
-    # non-edge neighbors — ie slightly increase their depth value
-    d_corr[mask] += correction_magnitude * weight[mask]
-    d_corr = np.clip(d_corr, 0.0, 1.0)
-    return d_corr
-
-def apply_nonuniform_shift(depth, delta_d, near_weight=3.0):
-    """
-    Apply depth shift with stronger correction near camera (small depth values)
-    and weaker correction far away (large depth values).
-    This makes the PCM correction visually more pronounced.
-    
-    near_weight: how much stronger the near correction is (1.0 = uniform)
-    """
-    d_corr = depth.copy()
-    # Weight inversely proportional to depth — more correction where depth is small
-    weight = 1.0 + near_weight * (1.0 - depth)
-    weight = weight / weight.mean()   # normalize weights so mean correction = delta_d
-    mask   = d_corr > 0
-    d_corr[mask] -= delta_d * weight[mask]
-    d_corr = np.clip(d_corr, 0.0, 1.0)
-    return d_corr
 
 # =========================================================================================
 

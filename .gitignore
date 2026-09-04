@@ -18,11 +18,7 @@ env/
 *.ckpt
 
 node_modules/
-checkpoints/
-utils/
-datasets/
 train.py
-website/
 
 # Others
 *.log

@@ -1,9 +1,13 @@
 # models/pvcnn.py
+# Defines ShiftPVCNN and FocalPVCNN — the two networks that correct depth-shift
+# (delta_d) and focal-scale (alpha_f) errors from a point cloud. Needed for both
+# training and inference.
 import torch
 import torch.nn as nn
 from models.pvconv import PVConv
 
 
+# ---- SHARED BACKBONE ----
 class _BasePVCNN(nn.Module):
     """Shared PVCNN backbone. Subclasses define bounds and head."""
 
@@ -33,6 +37,7 @@ class _BasePVCNN(nn.Module):
         return self.head(features.max(dim=2).values).squeeze(-1)
 
 
+# ---- REGRESSION HEADS ----
 def _shift_head():
     seq = nn.Sequential(
         nn.Linear(256, 256),
@@ -42,9 +47,9 @@ def _shift_head():
         nn.Linear(256, 1),
     )
     nn.init.xavier_uniform_(seq[-1].weight)
-    # Bias init = mean of Uniform(-0.25, 0.8) = 0.275
-    # After z-centering, z_mean of pc_shift == delta_d,
-    # so 0.275 is the correct prior for the output.
+    # Bias init = mean of Uniform(-0.25, 0.8) = 0.275.
+    # After z-centering, z_mean of pc_shift == delta_d, so this is the
+    # correct output prior.
     nn.init.constant_(seq[-1].bias, 0.275)
     return seq
 
@@ -66,6 +71,7 @@ def _focal_head():
     return seq
 
 
+# ---- SHIFT NETWORK ----
 class ShiftPVCNN(_BasePVCNN):
     """
     N_d: predicts delta_d from shift-corrupted, z-centered point cloud.
@@ -91,12 +97,17 @@ class ShiftPVCNN(_BasePVCNN):
         )
 
 
+# ---- FOCAL NETWORK ----
 class FocalPVCNN(_BasePVCNN):
     """
     N_f: predicts alpha_f from focal-corrupted point cloud.
-    x = (u-cx)/(fx*af)*z — the x/z ratio encodes af.
-    Both x and z are required: x alone is ambiguous (far object vs wide FOV).
-    Bounds: x,y ∈ [-1.25, 1.25] (af=0.5 extreme), z ∈ [0.0, 1.0]
+    x = (u-cx)/(fx*af)*z — the x/z ratio encodes af; both x and z are
+    required since x alone is ambiguous (far object vs wide FOV).
+
+    KNOWN ISSUE: at inference this network's predictions collapse toward
+    ~0.52 due to a coordinate-convention mismatch (see infer5.py/server.py
+    notes) — its z input isn't z-centered the way training expects.
+    Bounds: x,y in [-1.25, 1.25] (af=0.5 extreme), z in [0.0, 1.0].
     """
     def __init__(self, voxel_resolution=32):
         super().__init__(
