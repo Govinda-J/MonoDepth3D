@@ -1,0 +1,27 @@
+# website/backend/requirements.txt
+#
+
+# ── web framework ──────────────────────────────────────────────────────────
+fastapi==0.136.1
+uvicorn==0.46.0
+python-multipart==0.0.27   # required by FastAPI to parse the uploaded image (File(...))
+python-dotenv==1.2.2
+
+# ── ML / inference ─────────────────────────────────────────────────────────
+# CPU
+# python -m pip install torch==2.5.1 torchvision==0.20.1 --index-url https://download.pytorch.org/whl/cpu
+# python -m pip install -r requirements.txt
+
+# GPU
+# python -m pip install torch==2.5.1+cu121 torchvision==0.20.1+cu121 --index-url https://download.pytorch.org/whl/cu121
+# python -m pip install -r requirements.txt
+
+timm==1.0.25        # required by torch.hub's MiDaS DPT_Large model internals
+
+# ── image processing ───────────────────────────────────────────────────────
+opencv-python-headless==4.13.0.92   # "headless" = no GUI bindings, correct choice for servers
+numpy==2.2.6
+Pillow==12.1.1
+
+# ── model weight download ──────────────────────────────────────────────────
+huggingface_hub==1.4.1   # only needed if you fetch best_checkpoint.pth from a HF model repo at startup

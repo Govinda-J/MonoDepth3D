@@ -7,7 +7,6 @@ __pycache__/
 # Virtual environments
 venv/
 .venv/
-env/
 
 # Environment variables
 .env
@@ -17,12 +16,10 @@ env/
 *.pt
 *.ckpt
 
-node_modules/
-train.py
-
 # Others
 *.log
 outputs/
+node_modules/
 .vscode/
 .idea/
 *:Zone.Identifier

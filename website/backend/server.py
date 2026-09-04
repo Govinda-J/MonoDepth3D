@@ -14,21 +14,20 @@ import torch
 from fastapi import FastAPI, File, UploadFile, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
-from pcm_utils import shift_combined, shift_near_camera_edges
-
 from huggingface_hub import hf_hub_download
-from models.pvcnn import ShiftPVCNN, FocalPVCNN
-from config import PROJECT_ROOT, CHECKPOINT, PVCNN_MODEL_REPO
+
+from config import ( PROJECT_ROOT, CHECKPOINT, PVCNN_MODEL_REPO,
+                     INIT_FOV_DEG, PCM_POINTS, VOXEL_RES, MIDAS_DIR,
+                   ) 
 
 # ── PROJECT ROOT ───
 sys.path.insert(0, str(PROJECT_ROOT))
 
-INIT_FOV_DEG = 60.0
-PCM_POINTS   = 8192
-VOXEL_RES    = 32
+from utils.pcm_utils import shift_combined, shift_near_camera_edges
+from models.pvcnn import ShiftPVCNN, FocalPVCNN
+  
 
 local_checkpoint = CHECKPOINT
-MIDAS_DIR = os.path.join(torch.hub.get_dir(), "intel-isl_MiDaS_master")
 
 app = FastAPI(title="DepthCloud API")
 app.add_middleware(
@@ -46,10 +45,6 @@ _transform = None
 @app.on_event("startup")
 def load_pcm():
     global _shift_net, _focal_net
-    
-    '''if local_checkpoint and os.path.exists(local_checkpoint):
-        print(f"Loading PVCNN checkpoint: {CHECKPOINT}")
-        checkpoint_path = local_checkpoint'''
     
     print(f"Loading PVCNN checkpoint from HF...")
     checkpoint_path = hf_hub_download(

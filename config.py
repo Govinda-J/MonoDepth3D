@@ -4,6 +4,9 @@
 # import from here — server.py/infer5.py currently hardcode their own copies.
 import os
 from pathlib import Path
+from dotenv import load_dotenv
+
+load_dotenv()
 
 # ── PROJECT PATHS ─────────────────────────────────────────────────────────────
 PROJECT_ROOT = Path(
@@ -17,11 +20,7 @@ PVCNN_MODEL_REPO = os.environ.get(
     "Govinda-J/MonoDepth3D-Checkpoint"
 )
 
-CHECKPOINT = Path(
-    os.environ.get("PVCNN_CHECKPOINT",
-        PROJECT_ROOT / "checkpoints" / "best_checkpoint.pth"
-    )
-)
+CHECKPOINT = PROJECT_ROOT / "checkpoints" / "best_checkpoint.pth"
 
 OUTPUT_DIR = Path(
     os.environ.get("PCM_OUTPUT_DIR",
