@@ -11,7 +11,7 @@
 
 const App = {
   file:   null,
-  apiUrl: localStorage.getItem('dc_api_url') || '',
+  apiUrl: 'http://localhost:8000' || localStorage.getItem('dc_api_url') || '',
 };
 
 // ── API URL ────────────────────────────────────────────────
@@ -30,7 +30,6 @@ async function checkHealth() {
   try {
     const res  = await fetch(`${App.apiUrl}/health`, {
       signal:  AbortSignal.timeout(5000),
-      headers: { 'ngrok-skip-browser-warning': 'true' },
     });
     const data = await res.json();
     if (data.status === 'ok') {
@@ -165,7 +164,7 @@ document.getElementById('runBtn').addEventListener('click', runInference);
 
 async function runInference() {
   if (!App.file) return;
-  if (!App.apiUrl) { log('Paste your ngrok URL in the API field above.', 'err'); return; }
+  if (!App.apiUrl) { log('API missing', 'err'); return; }
 
   const runBtn  = document.getElementById('runBtn');
   const clearBtn = document.getElementById('clearBtn');
@@ -187,7 +186,6 @@ async function runInference() {
     const res = await fetch(`${App.apiUrl}/infer`, {
       method:  'POST',
       body:    fd,
-      headers: { 'ngrok-skip-browser-warning': 'true' },
     });
     if (!res.ok) throw new Error(`HTTP ${res.status}: ${(await res.text()).slice(0,200)}`);
     data = await res.json();

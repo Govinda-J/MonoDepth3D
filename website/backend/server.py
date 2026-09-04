@@ -18,9 +18,11 @@ from fastapi import FastAPI, File, UploadFile, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
-# ── project root  (two levels up from website/backend/) ───
-PROJECT_ROOT = os.path.abspath(os.path.join(os.path.dirname(__file__), "..", ".."))
-sys.path.insert(0, PROJECT_ROOT)
+from huggingface_hub import hf_hub_download
+from config import PROJECT_ROOT, CHECKPOINT, PVCNN_MODEL_REPO
+
+# ── project root ───
+sys.path.insert(0, str(PROJECT_ROOT))
 
 from models.pvcnn import ShiftPVCNN, FocalPVCNN
 
@@ -28,10 +30,8 @@ from models.pvcnn import ShiftPVCNN, FocalPVCNN
 # Matches the same PCM_CHECKPOINT variable used by infer5.py / visualize.py,
 # so all three entry points agree on where the weights live without needing
 # three different env vars. Falls back to the repo-relative default if unset.
-CHECKPOINT = os.environ.get(
-    "PCM_CHECKPOINT",
-    os.path.join(PROJECT_ROOT, "checkpoints", "best_checkpoint.pth"),
-)
+local_checkpoint = CHECKPOINT
+
 INIT_FOV_DEG = float(os.environ.get("PCM_INIT_FOV_DEG", 60.0))
 PCM_POINTS   = int(os.environ.get("PCM_NUM_POINTS", 8192))
 VOXEL_RES    = int(os.environ.get("PCM_VOXEL_RES", 32))
@@ -58,15 +58,19 @@ _transform = None
 @app.on_event("startup")
 def load_pcm():
     global _shift_net, _focal_net
-    print(f"Loading PCM checkpoint: {CHECKPOINT}")
-    if not os.path.exists(CHECKPOINT):
-        # Fail loudly and clearly at startup rather than crashing confusingly
-        # on the first /infer request — much easier to debug from container logs.
-        raise FileNotFoundError(
-            f"Checkpoint not found at {CHECKPOINT}. "
-            f"Set the PCM_CHECKPOINT env var, or place the file at that path."
-        )
-    ckpt = torch.load(CHECKPOINT, map_location="cpu", weights_only=True)
+    
+    '''if local_checkpoint and os.path.exists(local_checkpoint):
+        print(f"Loading PVCNN checkpoint: {CHECKPOINT}")
+        checkpoint_path = local_checkpoint'''
+    
+    print(f"Loading PVCNN checkpoint from HF...")
+    checkpoint_path = hf_hub_download(
+        repo_id=PVCNN_MODEL_REPO,
+        filename="best_checkpoint.pth",
+    )
+
+
+    ckpt = torch.load(checkpoint_path, map_location="cpu", weights_only=True)
     _shift_net = ShiftPVCNN(VOXEL_RES)
     _focal_net = FocalPVCNN(VOXEL_RES)
     _shift_net.load_state_dict(ckpt["shift_net"])

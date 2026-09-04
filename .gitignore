@@ -1,12 +1,33 @@
-*:Zone.Identifier
+# Python
 __pycache__/
 *.pyc
-*.pth
-checkpoints/
-node_modules/
-datasets/
-utils/
+*.py[cod]
+*.pyo
+
+# Virtual environments
+venv/
+.venv/
+env/
+
+# Environment variables
 .env
+
+# Model weights
+*.pth
+*.pt
+*.ckpt
+
+node_modules/
+checkpoints/
+utils/
+datasets/
+train.py
+website/
+
+# Others
 *.log
 outputs/
+.vscode/
+.idea/
+*:Zone.Identifier
 .DS_Store

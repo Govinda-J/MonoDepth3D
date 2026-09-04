@@ -1,5 +1,34 @@
+import os
+from pathlib import Path
+
+
+# ── Project paths ─────────────────────────────────────────────────────────────
+
+PROJECT_ROOT = Path(
+    os.environ.get("MONODEPTH3D_ROOT",
+        Path(__file__).resolve().parent
+    )
+)
+
+PVCNN_MODEL_REPO = os.environ.get(
+    "PVCNN_MODEL_REPO",
+    "Govinda-J/MonoDepth3D-Checkpoint"
+)
+
+CHECKPOINT = Path(
+    os.environ.get("PVCNN_CHECKPOINT",
+        PROJECT_ROOT / "checkpoints" / "best_checkpoint.pth"
+    )
+)
+
+OUTPUT_DIR = Path(
+    os.environ.get("PCM_OUTPUT_DIR",
+        PROJECT_ROOT / "outputs"
+    )
+)
+
+# ── ScanNet metric intrinsics ────────────
 config = {
-    # ── ScanNet metric intrinsics (used only in visualize.py GT cloud) ────────
     "fx": 577.590698, "fy": 578.729797,
     "cx": 318.905426, "cy": 242.683609,
 
@@ -22,12 +51,18 @@ config = {
     "visualize_every":  10,
 
     # ── Paths ─────────────────────────────────────────────────────────────────
-    "train_split":    "C:\\scannet_data\\train_split.json",
-    "test_split":     "C:\\scannet_data\\test_split.json",
+    # USED DURING TRAINING - NOT FOR INFERENCE
+    # NOT TO BE USED - UNLESS HARDCODED PATHS ARE CORRECTED
+    "train_split": os.environ.get(
+        "SCANNET_TRAIN_SPLIT",
+        r"C:\scannet_data\train_split.json"
+    ),
 
-    # TONIGHT: saving locally (no internet). Tomorrow morning:
-    #   1. Move all .pth files from C:\pvcnn checkpoints  →  G:\My Drive\3D_Reconstruction_Project\pvcnn\checkpoints
-    #   2. Swap the two lines below (comment tonight's, uncomment tomorrow's)
-    "cloud_save_dir": "C:\\pvcnn checkpoints",
-    # "cloud_save_dir": "G:\\My Drive\\3D_Reconstruction_Project\\pvcnn\\checkpoints",
+    "test_split": os.environ.get(
+        "SCANNET_TEST_SPLIT",
+        r"C:\scannet_data\test_split.json"
+    ),
+ # ── Output path ───────────────────────────────────────────────────────────
+    # Can be overridden with PCM_OUTPUT_DIR.
+    "cloud_save_dir": str(OUTPUT_DIR),
 }

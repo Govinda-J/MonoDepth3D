@@ -8,11 +8,11 @@ import numpy as np
 import torch
 import cv2
 import pyvista as pv
+from config import PROJECT_ROOT, CHECKPOINT, OUTPUT_DIR
 
 # ── paths ─────────────────────────────────────────────────────────────────────
-PROJECT_ROOT = "/home/wsluser/3D_Reconstruction_Project"
-PVCNN_ROOT   = os.path.join(PROJECT_ROOT, "pvcnn")
-STAGE2_CKPT  = os.path.join(PVCNN_ROOT, "checkpoints", "best_checkpoint.pth")
+PVCNN_ROOT   = PROJECT_ROOT
+STAGE2_CKPT  = CHECKPOINT
 sys.path.insert(0, PVCNN_ROOT)
 
 # ── constants ─────────────────────────────────────────────────────────────────
@@ -420,9 +420,10 @@ def main():
     input_dir  = os.path.dirname(args.image)
     base_name  = os.path.splitext(os.path.basename(args.image))[0]
 
-    depth_png_path = os.path.join("/mnt/c/Users/govinda/Downloads", f"{base_name}_depth.png")
-    raw_ply_path       = os.path.join("/mnt/c/Users/govinda/Downloads", f"{base_name}_raw.ply")
-    corrected_ply_path = os.path.join("/mnt/c/Users/govinda/Downloads", f"{base_name}_corrected.ply")
+    OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
+    depth_png_path = OUTPUT_DIR / f"{base_name}_depth.png"
+    raw_ply_path = OUTPUT_DIR / f"{base_name}_raw.ply"
+    corrected_ply_path = OUTPUT_DIR / f"{base_name}_corrected.ply"
 
     # Generate colored depth (RGBA)
     depth_rgba = depth_to_rgba(depth_hires)

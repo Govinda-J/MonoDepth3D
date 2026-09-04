@@ -57,8 +57,6 @@ const Viewer = (() => {
     };
     scene.add(mkLine([0,0,0],[0.5,0,0], 0xff4444));
     scene.add(mkLine([0,0,0],[0,0.5,0], 0x44ff88));
-    scene.add(mkLine([0,0,0],[0,0,0,0.5], 0x4488ff));   // note: fixed below
-    scene.remove(scene.children[scene.children.length-1]);
     scene.add(mkLine([0,0,0],[0,0,0.5], 0x4488ff));
 
     // camera
