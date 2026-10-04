@@ -19,7 +19,7 @@ This README explains **why** the raw reconstruction is wrong in the first place,
   <tr>
     <!--  ME  -->
     <td align="center" width="200px">
-      <a href="https://github.com/Govinda-J">
+      <a>
         <img src="https://github.com/Govinda-J.png" width="100" height="100" style="border-radius: 50%; border: 2px solid #58a6ff;" alt="Govinda"/>
         <br />
         <br />
@@ -33,7 +33,7 @@ This README explains **why** the raw reconstruction is wrong in the first place,
     </td>
     <!-- TEAM MEMBER 1 -->
     <td align="center" width="200px">
-      <a href="https://github.com/BhargavRam0307">
+      <a>
         <img src="https://github.com/BhargavRam0307.png" width="100" height="100" style="border-radius: 50%;" alt="Bhargav"/>
         <br />
         <br />
@@ -47,7 +47,7 @@ This README explains **why** the raw reconstruction is wrong in the first place,
     </td>
     <!-- TEAM MEMBER 2 -->
     <td align="center" width="200px">
-      <a href="https://github.com/08ganesh">
+      <a>
         <img src="https://github.com/08ganesh.png" width="100" height="100" style="border-radius: 50%;" alt="Ganesh"/>
         <br />
         <br />
