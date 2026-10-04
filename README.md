@@ -8,6 +8,62 @@ This README explains **why** the raw reconstruction is wrong in the first place,
 
 ---
 
+## 🤝 Meet the Team
+
+<p align="center">
+  Built in collaboration with an incredible team of peers 🚀<br />
+  <strong>Meet our Development Squad</strong>
+</p>
+
+<table align="center">
+  <tr>
+    <!--  ME  -->
+    <td align="center" width="200px">
+      <a href="https://github.com/Govinda-J">
+        <img src="https://github.com/Govinda-J.png" width="100" height="100" style="border-radius: 50%; border: 2px solid #58a6ff;" alt="Govinda"/>
+        <br />
+        <br />
+        <strong>Govinda J</strong>
+      </a>
+      <br />
+      <small><a href="https://github.com/Govinda-J">@Govinda-J</a></small>
+      <br />
+      <br />
+      <sub title="Contributions"><kbd>PVCNN Model Design, Inference & Web Design</kbd></sub>
+    </td>
+    <!-- TEAM MEMBER 1 -->
+    <td align="center" width="200px">
+      <a href="https://github.com/BhargavRam0307">
+        <img src="https://github.com/BhargavRam0307.png" width="100" height="100" style="border-radius: 50%;" alt="Bhargav"/>
+        <br />
+        <br />
+        <strong>MP Bhargav Ram</strong>
+      </a>
+      <br />
+      <small><a href="https://github.com/BhargavRam0307">@BhargavRam0307</a></small>
+      <br />
+      <br />
+      <sub title="Contributions"><kbd>Dataset Preprocessing, PVCNN Model Training & Web Design</kbd></sub>
+    </td>
+    <!-- TEAM MEMBER 2 -->
+    <td align="center" width="200px">
+      <a href="https://github.com/08ganesh">
+        <img src="https://github.com/08ganesh.png" width="100" height="100" style="border-radius: 50%;" alt="Ganesh"/>
+        <br />
+        <br />
+        <strong>Eggoni Ganesh</strong>
+      </a>
+      <br />
+      <small><a href="https://github.com/08ganesh">@08ganesh</a></small>
+      <br />
+      <br />
+      <sub title="Contributions"><kbd>Depth Module (MiDaS) & Point-cloud Visualization</kbd></sub>
+    </td>
+  </tr>
+</table>
+
+---
+
 ## Table of Contents
 
 1. [What This Project Actually Does](#1-what-this-project-actually-does)
